@@ -1,0 +1,26 @@
+<?php
+/**
+ * @file
+ * Install and Uninstall processes for age checker.
+ */
+
+/**
+ * Create tables on install.
+ */
+function age_checker_install() {
+  $t = get_t();
+  drupal_set_message(
+    $t('Please save default values in configuration settings.To configure your Age checker go to the <a href="!url">Age checker setting page</a>.',
+    array('!url' => base_path() . 'admin/config/people/age_checker'))
+  );
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function age_checker_uninstall() {
+  // Delete all global variables.
+  db_delete('variable')
+    ->condition('name', 'age_checker_%', 'LIKE')
+    ->execute();
+}

@@ -1,0 +1,327 @@
+<?php
+/**
+ * @file
+ * Hook implementations for the age_checker module.
+ */
+
+define('AGE_CHECKER_VISIBILITY_NOTLISTED', 0);
+define('AGE_CHECKER_VISIBILITY_LISTED', 1);
+
+/**
+ * Implements hook_theme().
+ */
+function age_checker_theme() {
+  return array(
+    'age_checker_popup' => array(
+      'variables'       => array(
+        'beforemessage' => NULL,
+        'aftermessage'  => NULL,
+        'widget'        => NULL,
+      ),
+      'template'        => 'age_checker',
+    ),
+  );
+}
+/**
+ * Implements hook_menu().
+ */
+function age_checker_menu() {
+  $items['admin/config/people/age_checker'] = array(
+    'title'            => 'Age Checker Settings',
+    'description'      => 'Configure default behaviour of Age Checker Settings.',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('age_checker_admin_form'),
+    'access callback'  => 'user_access',
+    'access arguments' => array('administer age checker settings'),
+    'file'             => 'age_checker.admin.inc',
+  );
+  return $items;
+}
+/**
+ * Implements hook_page_alter().
+ */
+function age_checker_page_alter(&$page) {
+  $t = get_t();
+  if (age_checker_show()) {
+    // Load cookie library.
+    drupal_add_library('system', 'jquery.cookie');
+    drupal_add_js(drupal_get_path('module', 'age_checker') . '/age_checker.js');
+    $settings = array('myval' => 'some_value');
+    drupal_add_js(array('age_checker' => $settings), 'setting');
+    drupal_add_css(drupal_get_path('module', 'age_checker') . '/age_checker.css');
+
+    $visibility = variable_get('age_checker_visibility', AGE_CHECKER_VISIBILITY_NOTLISTED);
+    $pages      = variable_get('age_checker_pages', '');
+    $verify     = FALSE;
+
+    // Determine if this page should be behind age checker.
+    switch ($visibility) {
+      case AGE_CHECKER_VISIBILITY_NOTLISTED:
+        if (!drupal_match_path(drupal_get_path_alias($_GET['q']), $pages)) {
+          $verify = TRUE;
+        }
+        break;
+
+      case AGE_CHECKER_VISIBILITY_LISTED:
+        if (drupal_match_path(drupal_get_path_alias($_GET['q']), $pages)) {
+          $verify = TRUE;
+        }
+        break;
+    }
+
+    if ($verify) {
+      // Add themed popup to content of the page.
+      $page['content']['age_checker'] = array(
+        '#markup' => theme('age_checker_popup'),
+      );
+      $message_beforeform  = variable_get('age_checker_before_form_text', array('value' => '', 'format' => NULL));
+      $message_beforeform  = check_markup($message_beforeform['value'], $message_beforeform['format']);
+      $message_afterform   = variable_get('age_checker_after_form_text', array('value' => '', 'format' => NULL));
+      $message_afterform   = check_markup($message_afterform['value'], $message_afterform['format']);
+      $background_imageurl = variable_get('age_checker_background_image');
+      $bg_img_url          = '';
+      if (isset($background_imageurl)) {
+        $file_obj          = file_load($background_imageurl);
+        if ($file_obj) {
+          $file_obj->status = FILE_STATUS_PERMANENT;
+          $bg_img_url       = file_create_url($file_obj->uri);
+          file_usage_add($file_obj, 'age_checker', 'image', 1);
+        }
+      }
+      // Add module variables to JS.
+      drupal_add_js(array(
+        'age_checker' => array(
+          'cookie_expiration' => variable_get('age_checker_cookie_expiration_time', 15),
+          'threshold_age'     => variable_get('age_checker_threshold_age', 18),
+          'redirecturl'       => variable_get('age_checker_url', '/'),
+          'blank_err_message' => $t(variable_get('age_checker_blank_error_msg', '')),
+          'dateformat_error'  => $t(variable_get('age_checker_dateformat_error_msg', '')),
+          'under_age_err_msg' => $t(variable_get('age_checker_underage_error_msg', '')),
+          'date_rnge_err_msg' => $t(variable_get('age_checker_daterange_error_msg', '')),
+          'background_image'  => $bg_img_url,
+          'beforemessage'     => $message_beforeform,
+          'aftermessage'      => $message_afterform,
+        )), 'setting');
+    }
+  }
+  // Hide Header, Footer, Sidebar first block from under age page.
+  $age_checker_url = variable_get('age_checker_url', '/');
+  $alias           = drupal_get_path_alias(current_path());
+  if ($alias == $age_checker_url) {
+    unset($page['header']);
+    unset($page['footer']);
+    unset($page['sidebar_first']);
+  }
+}
+/**
+ * Calculate visibility of age checker if set.
+ *
+ * Function copy from block.module, thanks for the original code.
+ *
+ * return boolean
+ */
+function _age_checker_visibility() {
+
+  $visibility = variable_get('age_checker_visibility', AGE_CHECKER_VISIBILITY_NOTLISTED);
+  $pages = variable_get('age_checker_pages', "admin/*\nuser");
+  // Convert path to lowercase. This allows comparison of the same path
+  // with different case. Ex: /Page, /page, /PAGE.
+  $pages = drupal_strtolower($pages);
+  if ($visibility < 2) {
+    // Convert the Drupal path to lowercase.
+    $path = drupal_strtolower(drupal_get_path_alias($_GET['q']));
+    // Compare the lowercase internal and lowercase path alias (if any).
+    $page_match = drupal_match_path($path, $pages);
+    if ($path != $_GET['q']) {
+      $page_match = $page_match || drupal_match_path($_GET['q'], $pages);
+    }
+    // When $visibility has a value of 0,
+    // the age checker is displayed on all pages except those listed in $pages.
+    // When set to 1, it is displayed only on those
+    // pages listed in $pages.
+    $page_match = !($visibility xor $page_match);
+  }
+  elseif (module_exists('php')) {
+    $page_match = php_eval($pages);
+  }
+  else {
+    $page_match = FALSE;
+  }
+  return $page_match;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function age_checker_permission() {
+  $t = get_t();
+  return array(
+    'administer age checker settings' => array(
+      'title'       => $t('administer age checker settings'),
+      'description' => $t('Full administration access, only for admin.'),
+    ),
+  );
+}
+
+/**
+ * Function to control age checker display depending user and accesses.
+ *
+ * @return bool
+ *   True if must be shown
+ */
+function age_checker_show() {
+  // User Access.
+  if ((!user_access('administrator')) && (_age_checker_visibility() == 1)) {
+    return TRUE;
+  }
+  return FALSE;
+}
+/**
+ * Preprocess function for age checker popup.
+ *
+ * @todo: Make this pluggable/themeable.
+ */
+function age_checker_preprocess_age_checker_popup(&$vars) {
+  $t = get_t();
+  $vars['widget']        = '';
+  $message_beforeform    = variable_get('age_checker_before_form_text', array('value' => '', 'format' => NULL));
+  $message_afterform     = variable_get('age_checker_after_form_text', array('value' => '', 'format' => NULL));
+  $vars['beforemessage'] = $t(check_markup($message_beforeform['value'], $message_beforeform['format']));
+  $vars['aftermessage']  = $t(check_markup($message_afterform['value'], $message_afterform['format']));
+  $vars['widget'] .= '<div id="age_checker_error_message"></div>';
+  $vars['widget'] .= '<div class="age_checker_widget dateselect">';
+  $form            = drupal_get_form('age_checker_getform');
+  $vars['widget'] .= drupal_render($form);
+  $vars['widget'] .= '</div>';
+}
+
+/**
+ * Implements hook_getform().
+ */
+function age_checker_getform() {
+  global $language;
+  $t = get_t();
+  $lang_prefix   = $language->prefix;
+  $date_val    = $t("DD");
+  $month_val   = $t("MM");
+  $year_val    = $t("YYYY");
+  $date_format = variable_get('age_checker_date_format');
+  $button_text = variable_get('age_checker_button_text', '');
+  $current_new_alias = drupal_get_path_alias(current_path());
+  // Language Dropdown.
+  if (module_exists('lang_dropdown')) {
+    $block  = module_invoke('lang_dropdown', 'block_view');
+    $rows[] = array(array(
+                      'data'    => $block,
+                      'align'   => 'center',
+                      'colspan' => '2',
+      ),
+    );
+    $country = $rows[0][0]['data']['content']['lang_dropdown_select']['#options'];
+    if (!empty($country)) {
+      $type = 'language';
+      $path = drupal_is_front_page() ? '<front>' : $_GET['q'];
+      $languages = language_negotiation_get_switch_links($type, $path);
+      $option  = array();
+      $i       = 0;
+      foreach ($languages->links as $val) {
+        $key_links = $val['language']->prefix;
+        $option[$key_links] = $t($val['language']->name);
+        $i++;
+      }
+      $selected_option = $lang_prefix;
+      $form['languagecode'] = array(
+        '#type'          => 'select',
+        '#default_value' => isset($selected_option) ? $selected_option : key($options),
+        '#options'       => $option,
+        '#attributes'    => array(
+          'id' => array('languagecode'),
+          'onchange' => 'age_checker.selectcountryonchange(this.options[this.selectedIndex].value)',
+        ),
+      );
+    }
+  }
+  // End of Language Dropdown
+  // Entry fields.
+  if ($date_format == 0) {
+    $form['day'] = array(
+      '#type'          => 'textfield',
+      '#default_value' => $t('DD'),
+      '#size'          => 2,
+      '#maxlength'     => 2,
+      '#id'            => 'age_checker_day',
+      '#attributes'    => array(
+        'onblur'       => "if (this.value == '') {this.value = '$date_val'}",
+        'onfocus'      => "if (this.value == '$date_val') {this.value = ''}",
+        'onkeyup'      => "age_checker.nextbox(this,1)",
+      ),
+    );
+    $form['month'] = array(
+      '#type'          => 'textfield',
+      '#default_value' => $t('MM'),
+      '#size'          => 2,
+      '#maxlength'     => 2,
+      '#id'            => 'age_checker_month',
+      '#attributes'    => array(
+        'onblur'       => "if (this.value == '') {this.value = '$month_val'}",
+        'onfocus'      => "if (this.value == '$month_val') {this.value = ''}",
+        'onkeyup'      => "age_checker.nextbox(this,2)",
+      ),
+    );
+  }
+  else {
+    $form['month'] = array(
+      '#type'          => 'textfield',
+      '#default_value' => $t('MM'),
+      '#size'          => 2,
+      '#maxlength'     => 2,
+      '#id'            => 'age_checker_month',
+      '#attributes'    => array(
+        'onblur'       => "if (this.value == '') {this.value = '$month_val'}",
+        'onfocus'      => "if (this.value == '$month_val') {this.value = ''}",
+        'onkeyup'      => "age_checker.nextbox(this,1)",
+      ),
+    );
+    $form['day'] = array(
+      '#type'          => 'textfield',
+      '#default_value' => $t('DD'),
+      '#size'          => 2,
+      '#maxlength'     => 2,
+      '#id'            => 'age_checker_day',
+      '#attributes'    => array(
+        'onblur'       => "if (this.value == '') {this.value = '$date_val'}",
+        'onfocus'      => "if (this.value == '$date_val') {this.value = ''}",
+        'onkeyup'      => "age_checker.nextbox(this,2)",
+      ),
+    );
+  }
+  $form['year'] = array(
+    '#type'          => 'textfield',
+    '#default_value' => $t('YYYY'),
+    '#size'          => 4,
+    '#maxlength'     => 4,
+    '#id'            => 'age_checker_year',
+    '#attributes'    => array(
+      'onblur'       => "if (this.value == '') {this.value = '$year_val'}",
+      'onfocus'      => "if (this.value == '$year_val') {this.value = ''}",
+      'onkeyup'      => "age_checker.nextbox(this,3)",
+    ),
+  );
+  $form['submit'] = array(
+    '#type'       => 'submit',
+    '#value'      => $t($button_text),
+    '#attributes' => array(
+      'onclick'   => "age_checker.verify();",
+    ),
+  );
+  $form['redirecturi'] = array(
+    '#type'           => 'hidden',
+    '#default_value'  => $current_new_alias,
+    '#attributes'     => array(
+      'id'            => 'agecheckerformredirecuri',
+    ),
+  );
+  $form['#attributes']['onsubmit'] = 'return false;';
+  $form['#attributes']['name']     = 'age_checker_form';
+  return $form;
+}

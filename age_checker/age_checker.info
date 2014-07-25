@@ -1,0 +1,6 @@
+name = Age Checker
+description = A module that provides a configurable age gate for restricting certain parts of a Drupal site.
+package = Other
+core = 7.x
+version = 7.2.8
+configure = admin/config/people/age_checker

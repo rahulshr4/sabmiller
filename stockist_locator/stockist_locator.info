@@ -1,0 +1,13 @@
+name = Stockist Locator
+description = A Stockist Locator content type.
+dependencies[] = field
+dependencies[] = options
+dependencies[] = list
+package = SABMIller Custom Modules
+core = 7.x
+version = 7.x.1.1
+configure = admin/config/system/stockist_locator
+
+files[] = stockist_locator.install
+files[] = stockist_locator.module
+files[] = stockist_locator.admin.inc

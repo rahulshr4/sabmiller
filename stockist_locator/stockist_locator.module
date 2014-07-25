@@ -1,0 +1,324 @@
+<?php
+
+/**
+ * @file
+ * Stockest_locator node info.
+ * @author Rahul Sharma <rahulsh@hcl.com>
+ */
+
+ /**
+  * Check Max file size on server.
+  */
+$max_size = parse_size(ini_get('upload_max_filesize'));
+/**
+ * Implements hook_node_info().
+ */
+function stockist_locator_node_info() {
+  $items = array(
+    'stockist_locator' => array(
+      'name'        => t('Stockist Locator'),
+      'base'        => 'node_content',
+      'description' => t('SABMiller Stockist Locator'),
+      'has_title'   => '1',
+      'title_label' => t('Stockist Name'),
+      'help'        => '',
+    ),
+  );
+  return $items;
+}
+
+
+/**
+ * Implements hook_menu().
+ */
+function stockist_locator_menu() {
+  $items['admin/config/system/stockist_locator'] = array(
+    'title'            => 'Stockist Locator Settings',
+    'type'             => MENU_NORMAL_ITEM,
+    'description'      => 'Administer stockist locator admin settings.',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('stockist_locator_admin_settings'),
+    'access callback'  => 'user_access',
+    'access arguments' => array('administer stockist locator settings'),
+    'file'             => 'stockist_locator.admin.inc',
+    'weight'           => 9,
+  );
+  $items['admin/config/system/stockist_locator/csv_import'] = array(
+    'title'            => 'CSV Import',
+    'type'             => MENU_LOCAL_TASK,
+    'access callback'  => 'user_access',
+    'access arguments' => array('administer stockist locator settings'),
+    'page callback'    => 'stockist_locator_pagecallback',
+    // 'file'           => 'stockist_locator.csv_import.inc',
+    'weight'           => 10,
+  );
+  $items['admin/config/system/stockist_locator/csv_export'] = array(
+    'title'            => 'CSV Export',
+    'type'             => MENU_LOCAL_TASK,
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('stockist_locator_csv_export'),
+    'access callback'  => 'user_access',
+    'access arguments' => array('administer stockist locator settings'),
+    'file'             => 'stockist_locator.admin.inc',
+    'weight'           => 11,
+  );
+  $items['stockist_locator'] = array(
+    'title'            => 'Stockist Locator',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('stockist_locator_ajax_form'),
+    'access arguments' => array('access site-wide stockist locator'),
+    'type'             => MENU_CALLBACK,
+    'file'             => 'stockist_locator.ajax.inc',
+  );
+  $items['stockist_locator/ajax'] = array(
+    'title'            => 'Stockist Locator ajax',
+    'page callback'    => 'stockist_getresultxml',
+    'page arguments'   => array('stockist_locator_ajax'),
+    'access arguments' => array('access site-wide stockist locator'),
+    'file'             => 'stockist_locator.ajax.inc',
+    'type'             => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function stockist_locator_theme($existing, $type, $theme, $path) {
+  // $postalCode = variable_get('storelocator_zipcode');
+  $themearr = array(
+    'stockist_locator_ajax_form' => array(
+      'render element'  => 'form',
+      'arguments'       => array('form' => NULL),
+      'template'        => 'stockist_locator',
+      // This will set to module/theme path by default:
+      'path'            => drupal_get_path('module', 'stockist_locator'),
+    ),
+  );
+  return $themearr;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function stockist_locator_permission() {
+  return array(
+    'administer stockist locator settings' => array(
+      'title'       => t('Administer stockist locator settings'),
+      'description' => t('Full administration access'),
+    ),
+    'access site-wide stockist locator' => array(
+      'title'  => t('Use the site-wide Stockist locator form'),
+    ),
+  );
+}
+
+
+/**
+ * Page callback function for the menu item csv import.
+ */
+function stockist_locator_pagecallback() {
+  // $module_path = drupal_get_path('module', 'stockist_locator');
+  $form  = drupal_get_form('stockist_locator_form');
+  return drupal_render($form);
+}
+/**
+ * End page callback function for the menu item.
+ */
+/**
+ * Implements hook_form().
+ */
+function stockist_locator_form() {
+  $module_path  = drupal_get_path('module', 'stockist_locator');
+  $csv_filepath = $module_path . '/sample_stockist_locator.csv';
+  $output       = '<p>Download the sample CSV file <a href="' . (file_create_url($csv_filepath)) . '" title="sample csv file">Sample CSV File</a></p>';
+  $form['message'] = array(
+    '#title'       => t('Stockist locator CSV import section'),
+    '#type'        => 'fieldset',
+    '#collapsible' => FALSE,
+    '#collapsed'   => FALSE,
+  );
+  $form['message']['html'] = array(
+    '#markup' => $output,
+    '#type'   => 'markup',
+  );
+  $form['message']['csv_import_file'] = array(
+    '#title'       => t('Import CSV File'),
+    '#type'        => 'file',
+    '#description' => t('Upload the CSV File. Maximum recommended size is 2 MB'),
+  );
+  $form['message']['submit'] = array(
+    '#type'   => 'submit',
+    '#value'  => t('Import File'),
+  );
+  $form['#validate'] = array(
+    'stockist_locator_form_validator',
+  );
+  return $form;
+}
+/**
+ * Form validator function.
+ */
+function stockist_locator_form_validator(&$form, &$form_state) {
+  $validators = array(
+    'file_validate_extensions' => array('csv'),
+  );
+  if ($file = file_save_upload('csv_import_file', $validators, "public://", FILE_EXISTS_REPLACE)) {
+    $form_state['values']['csv_uploaded_file'] = $file->destination;
+  }
+  else {
+    form_set_error('Error', t('There is an error while uploading the file.'));
+  }
+}
+/**
+ * Implements hook_submit().
+ */
+function stockist_locator_form_submit(&$form, &$form_state) {
+  $batch = array(
+    'title'            => t('Importing CSV data...'),
+    'operations'       => array(),
+    'init_message'     => t('Starting the process'),
+    'progress_message' => t('Imported @current out of @total stockists.'),
+    'error_message'    => t('An error occurred during processing'),
+    'finished'         => 'stockist_locator_import_finished',
+  );
+  if (isset($form_state['values']['csv_uploaded_file'])) {
+    if ($handle = fopen($form_state['values']['csv_uploaded_file'], 'r')) {
+      $batch['operations'][] = array('_stockist_locator_remember_filename', array($form_state['values']['csv_uploaded_file']));
+      $languages  = language_list();
+      $data       = fgetcsv($handle, 4096);
+      while (($data = fgetcsv($handle, 0, ',', '"')) !== FALSE) {
+        if (!array_key_exists(end($data), $languages)) {
+          $key        = key($data);
+          $data[$key] = 'und';
+        }
+        $batch['operations'][] = array('_stockist_locator_batch_processing', array($data));
+      }
+      fclose($handle);
+    }
+  }
+  batch_set($batch);
+}
+/**
+ * Batch process helpers.
+ */
+function stockist_locator_import_finished($success, $results, $operations) {
+  return t('Import process completed successfully.');
+}
+/**
+ * Function to remember file name.
+ */
+function _stockist_locator_remember_filename($filename, &$context) {
+  $context['results']['uploaded_filename'] = $filename;
+}
+/**
+ * Batch Processing function.
+ */
+function _stockist_locator_batch_processing($data, &$context) {
+  global $user;
+  // Show the row count by default.
+  $context['results']['rows_imported']++;
+  $context['message']  = t('Importing row %c', array('%c' => $context['results']['rows_imported']));
+  $context['message']  = t('Importing %title', array('%title' => $data[0]));
+  $lang                = end($data);
+  // Check for duplicate records in csv.
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'node')
+  ->entityCondition('bundle', 'stockist_locator')
+  ->propertyCondition('title', check_plain($data[0]))
+  ->propertyCondition('language', $lang);
+  $i = 1;
+  $fields         = field_info_instances("node", "stockist_locator");
+  foreach ($fields as $field) {
+    if ($field['type'] == 'taxonomy_term_reference') {
+      $query->fieldCondition('{$field[field_name]}', 'tid', stockist_locator_get_term_id(check_plain($data[$i])));
+    }
+    elseif ($field['type'] == 'list_text') {
+      $query->fieldCondition('{$field[field_name]}', 'value', stockist_locator_get_country_id(check_plain($data[$i])), '=');
+    }
+    else {
+      $query->fieldCondition('{$field[field_name]}', 'value', check_plain($data[$i]), '=');
+    }
+    $i++;
+  }
+  $count = $query->count()->execute();
+  // If Stockist doesn't exist in stockist_locator content type,
+  // import the Stockist data.
+  if (!$count) {
+    $node           = new stdClass();
+    $node->type     = 'stockist_locator';
+    $node->status   = 1;
+    // First one is title.
+    $node->title    = check_plain($data[0]);
+    $node->language = $lang;
+    $node->uid      = $user->uid;
+    $node->comment  = 0;
+    $allowed_field_types = array("text", "list_text", "taxonomy_term_reference");
+    // Fetch all the fields and assign them values.
+    $i = 1;
+    foreach ($fields as $field) {
+      if (in_array($field['type'], $allowed_field_types)) {
+        if ($field['type'] == 'taxonomy_term_reference') {
+          $node->{$field['field_name']}[LANGUAGE_NONE][0]['tid'] = stockist_locator_get_term_id(check_plain($data[$i]));
+        }
+        elseif ($field['type'] == 'list_text') {
+          $node->{$field['field_name']}[LANGUAGE_NONE][0]['value'] = stockist_locator_get_country_id(check_plain($data[$i]));
+        }
+        else {
+          $node->{$field['field_name']}[LANGUAGE_NONE][0]['value'] = check_plain($data[$i]);
+        }
+      }
+      $i++;
+    }
+    node_save($node);
+    drupal_set_message(t('Stockist: %stockist :has been imported.', array('%stockist' => $data[0])), 'status');
+  }
+  else {
+    drupal_set_message(t('Stockist: %stockist :already exist in stockist database.', array('%stockist' => $data[0])), 'error');
+  }
+}
+
+/**
+ * Retrieve the taxonomy name, if not found return empty value.
+ */
+function stockist_locator_get_term_id($name) {
+  foreach (taxonomy_get_term_by_name($name, 'stockist_category') as $term) {
+    return $term->tid;
+  }
+  return "0";
+}
+/**
+ * To import country name and save as per Drupal standard in node.
+ */
+function stockist_locator_get_country_id($country) {
+  $country_list = country_get_list();
+  $index = array_search(ucfirst(strtolower($country)), $country_list);
+  return $index;
+}
+
+/**
+ * Get country name from database, return empty value if not exist.
+ */
+function stockist_locator_get_country_name($key) {
+  $country_list = country_get_list();
+  if (!empty($key)) {
+    return $country_list[$key];
+  }
+  else {
+    return "";
+  }
+}
+/**
+ * Get Check boxes list.
+ */
+function stockist_locator_term_options($machine_name) {
+  $options = array();
+  $vid = taxonomy_vocabulary_machine_name_load($machine_name)->vid;
+  if (!empty($vid)) {
+    $options_list = taxonomy_get_tree($vid);
+    foreach ($options_list as $item) {
+      $options[$item->tid] = $item->name;
+    }
+  }
+  return $options;
+}

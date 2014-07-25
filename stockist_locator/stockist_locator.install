@@ -1,0 +1,267 @@
+<?php
+/**
+ * @file
+ * Install and Uninstall processes for stockist_locator.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function stockist_locator_install() {
+  node_types_rebuild();
+  stockist_locator_add_custom_vocabulary_and_terms();
+  stockist_locator_add_custom_fields();
+}
+/**
+ * Define custom field names for stockist_locator content type.
+ */
+function _stockist_locator_installed_fields() {
+  $t = get_t();
+  $country_list = country_get_list();
+  return array(
+    'stockist_locator_category' => array(
+      'field_name'  => 'stockist_locator_category',
+      'label'       => $t('Stockist Category'),
+      'type'        => 'taxonomy_term_reference',
+      'settings'    => array(
+        'allowed_values' => array(
+          array('vocabulary' => 'stockist_category', 'parent' => 0),
+        ),
+      ),
+    ),
+    'stockist_locator_address1' => array(
+      'field_name'  => 'stockist_locator_address1',
+      'label'       => $t('Address Line1'),
+      'type'        => 'text'),
+    'stockist_locator_address2' => array(
+      'field_name'  => 'stockist_locator_address2',
+      'label'       => $t('Address Line2'),
+      'type'        => 'text'),
+    'stockist_locator_city' => array(
+      'field_name'  => 'stockist_locator_city',
+      'label'       => $t('City'),
+      'settings'    => array('max_length' => 64),
+      'type'        => 'text'),
+    'stockist_locator_state' => array(
+      'field_name'  => 'stockist_locator_state',
+      'label'       => $t('State'),
+      'settings'    => array('max_length' => 64),
+      'type'        => 'text'),
+    'stockist_locator_country' => array(
+      'field_name'  => 'stockist_locator_country',
+      'label'       => $t('Country'),
+      'settings'    => array('allowed_values' => $country_list),
+      'type'        => 'list_text'),
+    'stockist_locator_postal_code' => array(
+      'field_name'  => 'stockist_locator_postal_code',
+      'label'       => $t('Postal Code'),
+      'settings'    => array('max_length' => 64),
+      'type'        => 'text'),
+    'stockist_locator_phone' => array(
+      'field_name'  => 'stockist_locator_phone',
+      'label'       => $t('Phone'),
+      'settings'    => array('max_length' => 32),
+      'type'        => 'text'),
+    'stockist_locator_email' => array(
+      'field_name'  => 'stockist_locator_email',
+      'settings'    => array('max_length' => 128),
+      'label'       => $t('Email'),
+      'type'        => 'text'),
+    'stockist_locator_longitude' => array(
+      'field_name'  => 'stockist_locator_longitude',
+      'label'       => $t('Longitude'),
+      'type'        => 'text',
+      'settings'    => array('max_length' => 64),
+    ),
+    'stockist_locator_latitude' => array(
+      'field_name'  => 'stockist_locator_latitude',
+      'label'       => $t('Latitude'),
+      'type'        => 'text',
+      'settings'    => array('max_length' => 64),
+    ),
+    'stockist_locator_website_url' => array(
+      'field_name'  => 'stockist_locator_website_url',
+      'label'       => $t('Website Url'),
+      'type'        => 'text'),
+  );
+}
+/**
+ * Define custom field instances for stockist_locator.
+ */
+function _stockist_locator_installed_instances() {
+  $t = get_t();
+  return array(
+    'stockist_locator_category' => array(
+      'field_name' => 'stockist_locator_category',
+      'label'      => $t('Stockist Category'),
+      'type'       => 'taxonomy_term_reference',
+      'widget'     => array(
+        'type'       => 'options_select'),
+    ),
+    'stockist_locator_address1' => array(
+      'field_name' => 'stockist_locator_address1',
+      'label'      => $t('Address Line1'),
+      'type'       => 'text',
+      'widget'     => array(
+        'type'       => 'text_textfield'),
+    ),
+    'stockist_locator_address2' => array(
+      'field_name' => 'stockist_locator_address2',
+      'label'      => $t('Address Line2'),
+      'type'       => 'text',
+      'widget'     => array(
+        'type'       => 'text_textfield'),
+    ),
+    'stockist_locator_city' => array(
+      'field_name' => 'stockist_locator_city',
+      'label'      => $t('City'),
+      'type'       => 'text',
+      'widget'     => array(
+        'type'       => 'text_textfield'),
+    ),
+    'stockist_locator_state' => array(
+      'field_name' => 'stockist_locator_state',
+      'label'      => $t('State'),
+      'type'       => 'text',
+      'widget'     => array(
+        'type'       => 'text_textfield'),
+    ),
+    'stockist_locator_country' => array(
+      'field_name' => 'stockist_locator_country',
+      'label'      => $t('Country'),
+      'type'       => 'list_text',
+      'widget'     => array(
+        'type'       => 'options_select'),
+    ),
+    'stockist_locator_postal_code' => array(
+      'field_name' => 'stockist_locator_postal_code',
+      'label'      => $t('Postal Code'),
+      'type'       => 'text',
+      'widget'     => array(
+        'type'       => 'text_textfield'),
+    ),
+    'stockist_locator_phone' => array(
+      'field_name' => 'stockist_locator_phone',
+      'label'      => $t('Phone'),
+      'type'       => 'text',
+      'widget'     => array(
+        'type'       => 'text_textfield'),
+    ),
+    'stockist_locator_email' => array(
+      'field_name' => 'stockist_locator_email',
+      'label'      => $t('Email'),
+      'type'       => 'text',
+      'widget'     => array(
+        'type'       => 'text_textfield'),
+    ),
+    'stockist_locator_longitude' => array(
+      'field_name' => 'stockist_locator_longitude',
+      'label'      => $t('Longitude'),
+      'type'       => 'text',
+      'widget'     => array(
+        'type'       => 'text'),
+    ),
+    'stockist_locator_latitude' => array(
+      'field_name' => 'stockist_locator_latitude',
+      'label'      => $t('Latitude'),
+      'type'       => 'text',
+      'widget'     => array(
+        'type'       => 'text'),
+    ),
+    'stockist_locator_website_url' => array(
+      'field_name' => 'stockist_locator_website_url',
+      'label'      => $t('Website Url'),
+      'type'       => 'text',
+      'widget'     => array(
+        'type'       => 'text_textfield'),
+    ),
+  );
+}
+/**
+ * Add custom fields to stockist_locator content type.
+ */
+function stockist_locator_add_custom_fields() {
+  foreach (_stockist_locator_installed_fields() as $field) {
+    field_create_field($field);
+  }
+  foreach (_stockist_locator_installed_instances() as $fieldinstance) {
+    $fieldinstance['entity_type'] = 'node';
+    $fieldinstance['bundle'] = 'stockist_locator';
+    field_create_instance($fieldinstance);
+  }
+}
+
+/**
+ * Create vocabulary terms on install.
+ */
+function stockist_locator_add_custom_vocabulary_and_terms() {
+  $stockist_vocab = (object) array(
+    'name'         => 'Stockist Category',
+    'description'  => 'This vocabulary has a Stockist Category Terms',
+    'machine_name' => 'stockist_category',
+  );
+  taxonomy_vocabulary_save($stockist_vocab);
+  $vocab = taxonomy_vocabulary_machine_name_load('stockist_category');
+  $stockist_category_terms = array(array(
+    'name'        => 'Restaurant',
+    'description' => 'Restaurant',
+    'vid'         => $vocab->vid,
+    ),
+    array(
+      'name'        => 'Bar',
+      'description' => 'Bar',
+      'vid'         => $vocab->vid,
+    ),
+    array(
+      'name'        => 'Store',
+      'description' => 'Store',
+      'vid'         => $vocab->vid,
+    ),
+  );
+  // Save terms on install.
+  foreach ($stockist_category_terms as $term) {
+    // Create the child term.
+    taxonomy_term_save((object) $term);
+  }
+}
+
+/**
+ * Delete custom fields to stockist_locator content type.
+ */
+function stockist_locator_delete_custom_fields() {
+  foreach (array_keys(_stockist_locator_installed_fields()) as $field) {
+    field_delete_field($field);
+  }
+  $instances = field_info_instances('node', 'stockist_locator');
+  foreach ($instances as $instance_name => $instance) {
+    field_delete_instance($instance);
+  }
+}
+/**
+ * Implements hook_uninstall().
+ */
+function stockist_locator_uninstall() {
+  // Delete all nodes and content type.
+  $custom_content_type = 'stockist_locator';
+  $sql = 'SELECT nid FROM {node} n WHERE n.type = :type';
+  $result = db_query($sql, array(':type' => $custom_content_type));
+  $stockist_ids = array();
+  foreach ($result as $row) {
+    $stockist_ids[] = $row->nid;
+  }
+  node_delete_multiple($stockist_ids);
+  stockist_locator_delete_custom_fields();
+  field_purge_batch(1000);
+  node_type_delete($custom_content_type);
+  // Delete Vocabulary.
+  $vocab = taxonomy_vocabulary_machine_name_load('stockist_category');
+  if (!empty($vocab)) {
+    taxonomy_vocabulary_delete($vocab->vid);
+  }
+  node_types_rebuild();
+  // Delete all global variables.
+  db_delete('variable')
+  ->condition('name', 'stockist_locator_%', 'LIKE')
+  ->execute();
+  drupal_flush_all_caches();
+}

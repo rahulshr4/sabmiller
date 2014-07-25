@@ -1,0 +1,93 @@
+#age_checker_verification_popup {
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+  background-color: #eee;
+  border: 2px solid #999;
+  border-radius: 5px;
+  display: none;
+  left: 0px;
+  position: absolute;
+  top: 0px;
+  width: 500px;
+  z-index: 9999;
+}
+
+#age_checker_message {
+  display: block;
+  padding: 15px;
+  text-align: justify;
+}
+
+#age_checker_overlay {
+  background-color: #000;
+  display: none;
+  filter: alpha(opacity=90);
+  min-height: 100%;
+  min-width: 100%;
+  /*opacity: 0.90;*/
+  opacity: 1;
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  z-index: 9998;
+  zoom: 1;
+}
+
+#age_checker_widget {
+  padding: 20px;
+  margin: 20px 0px;
+}
+
+#age_checker_widget .boolean li {
+  display: inline-block;
+  float: left;
+}
+
+#age_checker_widget .dateselect {
+  margin: auto;
+  text-align: center;
+}
+
+#age_checker_widget .dateselect select {
+  display: block;
+  padding: 4px;
+}
+
+#age_checker_widget .dateselect label {
+  display: inline-block;
+  margin: 0px 10px 0px 10px;
+}
+
+.clear {
+  clear: both;
+}
+
+.form-type-textfield, .form-item-languageCode{
+  display: inline-block;
+  margin: 0px 10px 0px 10px;
+}
+#age_checker_widget .dateselect #age_checker_month, #age_checker_day, #age_checker_year{
+  display: inline-block;
+  padding: 4px;
+  font-weight: normal;
+  height: 22px;
+  line-height: 22px;
+}
+
+#age_checker_widget .dateselect .form-submit{
+ height: 38px;
+ min-width: 265px;
+ margin: 10px 10px 0px 10px;
+ text-align: center;
+ display: inline-block;
+ padding: 4px;
+ }
+ #age_checker_error_message{
+ text-align:center;
+ }
+ #languagecode{
+ display: inline-block;
+ margin: 5px 0px 0px 30px;
+ float:left; 
+ }
+  
